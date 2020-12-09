@@ -119,6 +119,3 @@ def another(root):
         videos = prop.videos # for parsed list
 
         parsed_data.append(property_obj)
-
-
-
