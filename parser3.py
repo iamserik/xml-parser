@@ -25,7 +25,7 @@ def subelements_parser(obj):
 
         if obj.countchildren():
             for item in obj.getchildren(): 
-                if item != '': # Проверяем на пустоту
+                if item != '' or item.tag == 'imagen': # Проверяем на пустоту и если тег image тоже выполняем код 
                     sub_element.append(subelements_parser(item)) # Если обьект имеет поддерево то вызываем рекурсивно этот же метод
         else:
             sub_element.append(obj)
