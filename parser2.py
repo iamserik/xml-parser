@@ -13,109 +13,97 @@ root = objectify.fromstring(response.text.encode('utf-8'))
 
 parsed_data = []
 
-def checker(dicton):
-    for key, val in dicton.items():
-        if val == '':
-            return False
-    return True
+def checker(obj):
+    """Метод проверяет значение полученного обьекта на пустоту"""
+    return False if obj == '' or not obj else True
 
+def dict_changer(dict_obj):
+    """Метод создает новый словарь из полученного словоря в 
+    соответсвии со значениями. Если значение пустое то элемент 
+    не включается в возвращаемый словарь"""
+    new_dict = {}
+    for key, val in dict_obj.items():
+        if checker(val):
+            new_dict[key] = val
+    return new_dict
 
-def another(root):
-    for prop in root.getchildren():
-        property_obj = []
-                                                        # for parsed list
-        property_id = {'id': prop.attrib['id']}
-        created = {'created': prop.fecha_alta}
-        updated = {'updated': prop.fecha_modificacion}
-        reference = {'reference': prop.referencia}
-        family = {'family': prop.familia.attrib['id'], 'family': prop.familia} 
-        operation = {'operation': prop.operacion.attrib['id'], 'operation': prop.operacion}
-        state = {'state': prop.estado.attrib['id'], 'state': prop.estado}
-        status_id = {'status_id': prop.status_id}
-        bedrooms = {'bedrooms':  prop.dormitorios}
-        bathrooms = {'bathrooms': prop.banos}
-        toilets = {'toilets': prop.aseos}
+def parser(prop):
+    property_obj = {}
+    
+    property_obj['id'] = int(prop.attrib['id'])
+    property_obj['created'] = prop.fecha_alta
+    property_obj['updated'] = prop.fecha_modificacion
+    property_obj['reference'] = prop.referencia
+    property_obj['family'] = dict_changer({'id': prop.familia.attrib['id'], 'family': prop.familia})
+    property_obj['operation'] = dict_changer({'id': prop.operacion.attrib['id'], 'operation': prop.operacion})
+    property_obj['state'] = dict_changer({'id': prop.estado.attrib['id'], 'state': prop.estado})
+    property_obj['status_id'] = prop.status_id
+    property_obj['bedrooms'] = prop.dormitorios
+    property_obj['bathrooms'] = prop.banos
+    property_obj['toilets'] = prop.aseos
 
-        property_obj = [item for item in [property_id, created, updated, reference, family, operation, state, status_id, bedrooms, bathrooms, toilets] if checker(item)]
+    # location informations
+    location_items = {}
+    location_items['province'] = prop.localizacion.provincia
+    location_items['population'] = dict_changer({'id': prop.localizacion.poblacion.attrib['id'], 'population': prop.localizacion.poblacion})
+    latitude = None
+    longitude = None
+    if hasattr(prop.localizacion, 'latitud') and hasattr(prop.localizacion, 'longitud'): # В некоторых элементах отсутвтвуют значения широты и долготы
+        location_items['latitude'] = prop.localizacion.latitud
+        location_items['longitude'] = prop.localizacion.longitud
+    location_items['cp'] = prop.localizacion.cp
+    location_items['zone'] = prop.localizacion.zona
+    location_items['country'] = prop.localizacion.pais
 
-        # location informations
-        province = {'province': prop.localizacion.provincia}
-        population = {'population_id': prop.localizacion.poblacion.attrib['id'], 'population': prop.localizacion.poblacion}
-        # latitude = {'latitude': prop.localizacion.latitud}
-        # longitude = {'longitude': prop.localizacion.longitud}
-        cp = {'cp': prop.localizacion.cp}
-        zone = {'zone': prop.localizacion.zona}
-        country = {'country': prop.localizacion.pais}
+    property_obj['location'] = dict_changer(location_items)
 
-        location = [item for item in [province, population, cp, zone, country] if checker(item)] # for parsed list
-        property_obj.append(location)
+    # Price
+    property_obj['price'] = {'price': prop.precio, 'badge': prop.precio.attrib['divisa']}
 
-        # Price
-        price = {'price': prop.precio, 'badge': prop.precio.attrib['divisa']}
-        property_obj.append(price)
+    # sorfaces informations
+    surface_items = {}
+    surface_items['habitable'] = prop.superficies.habitable
+    surface_items['built'] = prop.superficies.construida
+    surface_items['plot'] = prop.superficies.parcela
+    surface_items['kitchen'] = prop.superficies.cocina
+    surface_items['salon'] = prop.superficies.salon
+    surface_items['yard'] = prop.superficies.jardin
+    surface_items['terrace'] = prop.superficies.terraza
 
-        # sorfaces informations
-        habitable = {'habitable' : prop.superficies.habitable}
-        built = {'built': prop.superficies.construida}
-        plot = {'plot': prop.superficies.parcela}
-        kitchen = {'kitchen': prop.superficies.cocina}
-        salon = {'salon': prop.superficies.salon}
-        yard = {'yard': prop.superficies.jardin}
-        terrace = {'terrace': prop.superficies.terraza}
+    property_obj['surfaces'] = dict_changer(surface_items)
 
-        surfaces = [itm for itm in [habitable, built, plot, kitchen, salon, yard, terrace] if checker(itm)] # for parsed list
-        property_obj.append(surfaces)
+    # characteristics    
+    property_obj['characteristics'] = [{'id': char.attrib['id'], 'characteristic': char} for char in prop.iter('caracteristica') if checker(char)]
 
-        # characteristics
-        characteristics = [] # for parsed list
+    # Labels   
+    property_obj['labels'] = [label for label in prop.iter('etiqueta') if checker(label)]
 
-        for char in prop.iter('caracteristica'):
-            child = {}
-            if char != '':
-                child['char_id'] = char.attrib['id']
-                child['char'] = char
-                characteristics.append(child)
-        
-        property_obj.append(characteristics)
+    # Descriptions
+    descriptions = []
 
-        # Labels
-        labels = [] # for parsed list
+    for description in prop.descripciones.getchildren():
+        child = {}
+        child['language'] = description.attrib['idioma']
+        child['title'] = description.titulo
+        child['description'] = description.descripcion
+        descriptions.append(child)
 
-        for label in prop.iter('etiqueta'):
-            labels.append({'label': label})
-        
-        property_obj.append(labels)
+    property_obj['descriptions'] = descriptions
 
-        # Descriptions
-        descriptions = [] # for parsed list
+    property_obj['images'] = [image.attrib['url'] for image in prop.iter('imagen')]
 
-        for description in prop.descripciones.getchildren():
-            child = {}
-            language = description.attrib['idioma']
-            child['language'] = language
-            child['title'] = description.titulo
-            child['description'] = description.descripcion
-            descriptions.append(child)
+    property_obj['documents'] = prop.documentos
 
-        property_obj.append(descriptions)
+    property_obj['links'] = [link for link in prop.iter('enlace')]
 
+    property_obj['videos'] = prop.videos
 
-        images = [] # for parsed list
+    return dict_changer(property_obj) # Проверяем на пустоту полученных данных и если усть пустые значения то их отсекаем
 
-        for img in prop.iter('imagen'):
-            images.append({'url': img.attrib['url'], 'principal': img.attrib['principal']})
+def main():
+    for prop in root.iter('propiedad'):
+        property_obj = parser(prop) # Передаем каждый полученное имущество методе parser()
+        parsed_data.append(property_obj) # Записываем полученный словарь в общий список
 
-        property_obj.append(images)        
-
-        documents = prop.documentos # for parsed list
-
-        links = [] # for parsed list
-
-        for link in prop.iter('enlace'):
-            links.append({'language': link.attrib['idioma'], 'link': link})
-
-        property_obj.append(links)        
-
-        videos = prop.videos # for parsed list
-
-        parsed_data.append(property_obj)
+if __name__ == '__main__':
+    main()
