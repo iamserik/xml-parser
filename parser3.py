@@ -1,6 +1,8 @@
 import requests
 import urllib3
 
+from englishify import translator
+
 from lxml import objectify
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -30,10 +32,10 @@ def subelements_parser(obj):
         else:
             sub_element.append(obj)
 
-        obj_items[obj.tag] = sub_element
+        obj_items[translator(obj.tag)] = sub_element
 
     else:
-        obj_items[obj.tag] = obj.text
+        obj_items[translator(obj.tag)] = obj.text
 
     return obj_items
 
