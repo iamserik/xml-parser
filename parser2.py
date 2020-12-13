@@ -96,7 +96,7 @@ def parser(prop):
 
     property_obj['links'] = [link for link in prop.iter('enlace')]
 
-    property_obj['videos'] = prop.videos
+    property_obj['videos'] = [{'type': video.tipo, 'url': video.url} for video in prop.iter('video') if checker(video)]
 
     return dict_changer(property_obj) # Проверяем на пустоту полученных данных и если усть пустые значения то их отсекаем
 
